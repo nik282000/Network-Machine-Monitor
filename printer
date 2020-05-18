@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 #useage printer -s [size] -u [underline] -r [rotation] -i [invert] "Text Goes Here"
 #printer -s 0 -u 0 -r 0 -i 0 "Some Text"

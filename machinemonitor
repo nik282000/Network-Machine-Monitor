@@ -36,8 +36,6 @@ def testHost(hostIP): #Ping each machine, return up/down value.
         return 'down'
 
 def printMessage(s, u, r, i, message): #Format message for printer script.
-    #out = subprocess.run(['/usr/bin/echo', '-s', str(s), '-u', str(u), '-r', str(r), '-i', str(i), message], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    #print(out.stdout)
     subprocess.run([printerScript, '-s', str(s), '-u', str(u), '-r', str(r), '-i', str(i), message], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
 def batchMessage(messageList): #Split up a list of messages with print paramaters and pass it to printMessages()

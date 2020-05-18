@@ -1,0 +1,81 @@
+#!/usr/bin/env python3
+import time
+import datetime
+import subprocess
+
+configFile = '/home/nick/Documents/MachineMonitor/machinemonitor.cfg' #Path to conifg file.
+printerScript = '/home/nick/bin/printer' #Path to printer script
+
+#Config file should contain a list of IPs/Hostnames + a machine name eg.
+#
+#192.168.0.1 Router
+#192.168.0.2 Server
+#
+#After the first run this script will add 'up' or 'down' to the end of each line to keep track of the machine's last state
+
+def getMachines(filepath): #Read the config file and make a list of the machines to be checked.
+    with open(filepath, 'r') as cfg:
+        splitLines = []
+        line = cfg.readline()
+        while line:
+            splitLines.append(line.split()) #Split each line on whitespace ([IP], [Machine name], [last status up/down])
+            line = cfg.readline()
+    cfg.close()
+    return splitLines
+
+def updateMachines(filepath, lines): #Update the config file with the new last status for each machine.
+    with open(filepath, 'w') as cfg:
+        for i in range(len(lines)):
+            cfg.write(lines[i] + '\n')
+        cfg.close()
+
+def testHost(hostIP): #Ping each machine, return up/down value.
+    if subprocess.run(['/usr/bin/ping', '-c', '1', hostIP], stdout=subprocess.PIPE, stderr=subprocess.PIPE).returncode == 0:
+        return 'up'
+    else:
+        return 'down'
+
+def printMessage(s, u, r, i, message): #Format message for printer script.
+    #out = subprocess.run(['/usr/bin/echo', '-s', str(s), '-u', str(u), '-r', str(r), '-i', str(i), message], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    #print(out.stdout)
+    subprocess.run([printerScript, '-s', str(s), '-u', str(u), '-r', str(r), '-i', str(i), message], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+def batchMessage(messageList): #Split up a list of messages with print paramaters and pass it to printMessages()
+    for i in range(len(messageList)):
+        printMessage(messageList[i][0], messageList[i][1], messageList[i][2], messageList[i][3], messageList[i][4]) 
+
+#----------------------------------------MAIN STARTS HERE-------------------------------------------------
+
+machines = [] #List of lists, contains machine IPs, names and last status (if available).
+message = "" #Stores the current message to be sent to the printer.
+queue = [] #Stores the queue of messags to be printed .
+machines = getMachines(configFile) #Get the list of machines.
+
+for i in range(len(machines)): #Go through each machine's list.
+    status = testHost(machines[i][0]) #Pass the IP to the up/down test.
+    if len(machines[i]) == 3: #if there is a machine[i][2] field then there was a previous state to check agaisnt.
+        if status == machines[i][2]: #Last state is the same as the current state.
+            message = machines[i][1] + ' is ' + status
+        else: #Change in status, make up a message and pass it to the printer.
+            message = machines[i][1] + ' is ' + status
+            if status == 'down': #Invert message colour if machine is down
+                queue.append([0, 0, 0, 1, message])
+            else:
+                queue.append([0, 0, 0, 0, message])
+            machines[i][2] = status #Update the last startus to the current status.
+    else: #If there was no last state, make up a message and add a status message to machines[i].
+        message = machines[i][1] + ' is ' + status
+        queue.append([0, 0, 0, 0, message])
+        machines[i].append(status) #Current status to be written back to cfg file.
+    machines[i] = " ".join(machines[i]) #Join the list of lists into a list of string with whitspace between values, this is written back to the config file.
+
+if len(queue) > 0: #If there are messages to print, add a time stamp and a trailing white line.
+    printMessage(1, 0, 0, 0, datetime.datetime.now().strftime("  %b %e %Y"))
+    printMessage(0, 0, 0, 0, datetime.datetime.now().strftime("           %l:%M%p"))
+    batchMessage(queue)
+    printMessage(1, 0, 0, 0, " ")
+
+updateMachines(configFile, machines) #Pass the list of strings to the conig update function.
+
+
+

@@ -1,0 +1,110 @@
+#!/usr/bin/python3
+
+#useage printer -s [size] -u [underline] -r [rotation] -i [invert] "Text Goes Here"
+#printer -s 0 -u 0 -r 0 -i 0 "Some Text"
+#user must be member of group 'lp' to use the printer
+
+#printer.write(ESC + '7' + '\x07\x50\x02') #Default settings
+#printer.write(ESC + '7' + '\x07\xf0\x02') #More heat time
+
+import sys
+import subprocess
+
+def initPrinter():
+    printer.write(ESC + '@')
+
+def printTestPage():
+    printer.write(DC2 + 'T\n')
+
+def printText(text): #Omitting a trailing LF adds the text to the buffer without printing.
+    printer.write(text)
+
+def textSize(size): #Size = 0-7, coresponds to (size + 1) * normal
+    size = size * 17
+    printer.write(GS + '!' + str(chr(size)))
+
+def textUnderline(n): #Underline = 0 or 1, normal or underline
+    printer.write(ESC + '-' + str(chr(n)))
+
+def textRotate(amount): #Ammount = 0-3, 90 degree inrements, 1 and 3 are wonky
+    if (amount == 0):
+        printer.write(ESC + '{' + '\x00')
+        printer.write(ESC + 'V' + '\x00')
+    elif (amount == 1):
+        printer.write(ESC + '{' + '\x00')
+        printer.write(ESC + 'V' + '\x01')
+    elif (amount == 2):
+        printer.write(ESC + '{' + '\x01')
+        printer.write(ESC + 'V' + '\x00')
+    elif (amount == 3):
+        printer.write(ESC + '{' + '\x01')
+        printer.write(ESC + 'V' + '\x01')
+
+def textInvert(n): #0 = normal, 1 = white on black
+    printer.write(GS + 'B' + str(chr(n)))
+
+#---------------------------------------Main Program---------------------------------------
+ESC = '\x1b'
+GS = '\x1d'
+DC2 = '\x12'
+LF = '\x0a'
+
+ls = subprocess.run(['ls', '/dev/usb/'], stdout=subprocess.PIPE, stderr=subprocess.PIPE) #list the devices in /dev/usb/
+deviceList = ls.stdout.decode('UTF-8').split()
+for i in range(len(deviceList)):
+    if deviceList[i].find('lp') == 0: #Use the first line printer lp* (because I only have one)
+        path = "/dev/usb/" + deviceList[i]
+
+try:
+    printer = open(path, 'a')
+except:
+    print('Cannon open printer.')
+    exit(1)
+
+if (len(sys.argv) % 2) == 1: #Make sure there are an even number of aruments
+    print('Wronng number of arguments')
+    exit(1)
+
+#Set default parameters for printing
+size = 0
+underline = 0
+rotation = 0
+invert = 0
+text = sys.argv[-1] #The last agument is the string to be printed
+
+
+if sys.argv.count('-s') == 1: #Check for size, underline, rotation and invert arguments and extract values
+    size = int(sys.argv[sys.argv.index('-s') + 1])
+    if size < 0 or size > 7:
+        print('Size value out of range, 0-7')
+        exit()
+
+if sys.argv.count('-u') == 1:
+    underline = int(sys.argv[sys.argv.index('-u') + 1])
+    if underline < 0 or underline > 1:
+        print('Underline value out of range, 0/1')
+        exit()
+
+if sys.argv.count('-r') == 1:
+    rotation = int(sys.argv[sys.argv.index('-r') + 1])
+    if rotation < 0 or rotation > 3:
+        print('Rotation value out of range, 0-3')
+        exit()
+    if rotation == 3:
+        text = text[::-1]
+
+if sys.argv.count('-i') == 1:
+    invert = int(sys.argv[sys.argv.index('-i') + 1])
+    if invert < 0 or invert > 1:
+        print('Invert value out of range, 0/1')
+        exit()
+
+#Initialize printer, set printing parameters, print and quit
+initPrinter()
+textSize(size)
+textUnderline(underline)
+textRotate(rotation)
+textInvert(invert)
+printText(text + LF)
+printer.close()
+exit()

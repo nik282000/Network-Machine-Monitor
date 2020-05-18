@@ -1,6 +1,6 @@
 # Network-Machine-Monitor
 
-machinemonitor - Checks a list of machines with ping, feeds an output to the printer script. Location of the printer script and config file is hardcoded and will need to be adjusted accordingly.
+machinemonitor - Checks a list of machines with ping and feeds an output to a printer script. Location of the printer script and config file is hardcoded and will need to be adjusted accordingly.
 
 machinemonitor.cfg - List of machines to be checked. Contains the address of the machines, human readable names and machines'  last status. One machine per line in the format:
 [IP/domain] [Human readable name] [last status]
